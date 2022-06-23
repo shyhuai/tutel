@@ -13,7 +13,15 @@ import subprocess
 from typing import List, Tuple
 
 from setuptools import setup, find_packages, Command
-from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CppExtension
+from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CppExtension, _find_cuda_home
+
+CUDA_DIR = _find_cuda_home()
+CUDA_DIR  =os.environ.get('CUDA_HOME', CUDA_DIR) 
+print('CUDA_DIR: ', CUDA_DIR)
+NCCL_DIR = '/home/esetstore/downloads/nccl_2.10.3-1+cuda10.2_x86_64'
+NCCL_DIR =os.environ.get('NCCL_HOME', NCCL_DIR) 
+print('NCCL_DIR: ', NCCL_DIR)
+
 
 try:
     from torch.utils.cpp_extension import IS_HIP_EXTENSION
@@ -57,6 +65,7 @@ def install(use_cuda, use_nccl):
         extension = CppExtension
     else:
         ext_libs += ['dl', 'cuda', 'nvrtc'] if not IS_HIP_EXTENSION else []
+        print('Building with GPU')
         ext_args['cxx'] += ['-DUSE_GPU']
         extension = CUDAExtension
 
@@ -64,6 +73,7 @@ def install(use_cuda, use_nccl):
         if IS_HIP_EXTENSION:
             ext_libs += ['rccl']
         else:
+            print('Building with NCCL')
             ext_libs += ['nccl']
         ext_args['cxx'] += ['-DUSE_NCCL']
 
@@ -111,7 +121,8 @@ def install(use_cuda, use_nccl):
             extension('tutel_custom_kernel', [
                 './tutel/custom/custom_kernel.cpp',
             ],
-            library_dirs=['/usr/local/cuda/lib64/stubs'],
+            library_dirs=[CUDA_DIR+'/lib64/stubs', CUDA_DIR+'/lib64', NCCL_DIR+'/lib'],
+            include_dirs=[NCCL_DIR+'/include'],
             libraries=ext_libs,
             extra_compile_args=ext_args)
         ],
